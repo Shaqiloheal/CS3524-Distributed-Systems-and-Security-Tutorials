@@ -1,11 +1,10 @@
-package echoexample.echoserver;
+package echoexample.echoserver;  
 
-import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.net.ServerSocket;
+import java.io.IOException; 
+import java.io.ObjectInputStream; 
+import java.io.ObjectOutputStream; 
+import java.net.ServerSocket; 
 import java.net.Socket;
-
 
 public class EchoServer {
 
@@ -14,51 +13,59 @@ public class EchoServer {
     private ObjectOutputStream streamToClient;
     private ServerSocket serverSocket;
 
-    public EchoServer(int inputport) {
+
+    public EchoServer(int port) {
         this.port = port;
-        streamFromClient = null;
-        streamToClient = null;
+        this.streamFromClient = null;
+        this.streamToClient = null;
     }
 
     private void setup() throws IOException {
         this.serverSocket = new ServerSocket(this.port);
     }
 
-    private void awaitClient() {
+    private void awaitClient() throws IOException {
+        System.out.println("Waiting for client...");
+        Socket socket = this.serverSocket.accept();
+        // Client connected
+
+        System.out.println("Client connected.");
         
+        // Setup streams
+        this.streamFromClient = new ObjectInputStream(
+            socket.getInputStream()
+        );
+        this.streamToClient = new ObjectOutputStream(
+            socket.getOutputStream()
+        );
     }
 
-    public void start() {
-        System.out.println("Starting server ...");
-
+    private void processResult() throws IOException {
+        String result = "**NO RESULT**";
+        // Read data from the client
         try {
-            // create a Server Socket listening to port 50000
-            ServerSocket serverSocket = new ServerSocket(50000);
-
-            // Call accept() method to wait for connections
-            Socket socket = this.serverSocket.accept();
-            // after connection to client is made, the following code will run
-            System.out.println("Client connected.");
-
-            // Read and write to socket IP streams
-            // read socket input stream that client sent
-            this.streamFromClient = new ObjectInputStream(socket.getInputStream());
-            // output stream data to client
-            this.streamToClient = new ObjectOutputStream(socket.getOutputStream());
-
-            // read data from input stream
             String readString = (String) this.streamFromClient.readObject();
-            System.out.println("Recieved from client: " + readString);
+            System.out.println("Received from client: " + readString);
+            
+            // Process the data and send it back to the client
+            result = readString.toUpperCase();
+        } catch (ClassNotFoundException e) {
+            // e.printStackTrace();
+            System.out.println("Unrecognised class.");
+        }
+        streamToClient.writeObject(result);
+    }
 
-            // do something about the data
-            String result = readString.toUpperCase();
-
-            // output results to client
-            streamToClient.writeObject(result);
-
-        } catch (IOException | ClassNotFoundException e) {
-            e.printStackTrace();
+    public void run() {
+        try {
+            this.setup();
+            while(true) {
+                this.awaitClient();
+                this.processResult();
+            }
+        } catch (IOException e) {
+            // e.printStackTrace();
+            System.out.println("Encountered IOException; closing...");
         }
     }
-    
 }
